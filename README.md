@@ -8,15 +8,31 @@ In this study, we propose UniVG, a novel generative foundation model for univers
 
 ![Methods]()
 
-# Code Release Plan
-We have established this repository to support the reproducibility of our work "UniVG: A Universal Generative Foundation Model for Few-Shot Vascular Image Segmentation". We are committed to releasing the complete codebase incrementally following manuscript acceptance.
 
-Currently Available:
-✅ Core inference scripts for vascular image segmentation  2025.11.15
+ ## 📢 About This Repository
 
-Planned Release Timeline：
- Spatial Colonization Algorithm (SCA) for vascular structure synthesis  2025.11.30
- Pre-trained Foundation Model & Code                                    2025.12.15
- Downstream Modality Fine-tuning Code                                   2025.12.30
+We have established this repository to support the **reproducibility** of our work:  
+**"Generative Data-engine Foundation Model for Universal Few-shot 2D Vascular Image Segmentation"**
+
+We are committed to releasing the complete codebase incrementally following manuscript acceptance.
+
+---
+## 🎯 Currently Available
+
+| Component | Status | Release Date |
+|-----------|--------|--------------|
+| scripts for vascular image segmentation | ✅ **Available** | 2025.11.15 |
+
+---
+
+## 📅 Planned Release Timeline
+
+| Component | Status | Expected Release |
+|-----------|--------|------------------|
+| Spatial Colonization Algorithm (SCA) for vascular structure synthesis | 🔄 In Progress | **2025.11.30** |
+| Pre-trained Foundation Model & Code | 📦 Coming Soon | **2025.12.15** |
+| Downstream Modality Fine-tuning Code | 📦 Coming Soon | **2025.12.30** |
+
+---
  
 
