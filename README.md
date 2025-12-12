@@ -20,17 +20,6 @@ The UniVG-58K dataset presented in this paper comprises both pre-training data a
 |-----------|--------|--------------|
 | Spatial Colonization Algorithm (SCA) for vascular structure synthesis |✅ **Available** | **2025.12.12** |
 
----
-
-## 📅 Planned Release Timeline
-
-| Component | Status | Expected Release |
-|-----------|--------|------------------|
-| Pre-trained Foundation Model & Code | 📦 Coming Soon | **2025.1.10** |
-| Downstream Modality Fine-tuning Code | 📦 Coming Soon | **2025.1.30** |
-
----
-
 # 🚀 Quick Start: Spatial Colonization Algorithm (SCA)
 
 ## Installation
@@ -51,6 +40,13 @@ Generate synthetic vascular images:
 ```bash
 python Main.py --input-dir ./RealCoronaryArteryMask --output-dir ./output --modality CoronaryArtery
 ```
+---
 
- 
+## 📅 Planned Release Timeline
+
+| Component | Status | Expected Release |
+|-----------|--------|------------------|
+| Pre-trained Foundation Model & Code | 📦 Coming Soon | **2025.1.10** |
+| Downstream Modality Fine-tuning Code | 📦 Coming Soon | **2025.1.30** |
+
 
