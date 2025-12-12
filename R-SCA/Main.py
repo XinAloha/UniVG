@@ -115,9 +115,6 @@ def find_start_point(image):
     print('position err')
     return (0, 0)
 
-def change_worldcoordinates(tuple, weight=512, height=512):
-    return (height - height + tuple[1], -tuple[0] + weight)
-
 def draw_tree(node, parent=None, amount=0, image_size=512):
 
     if parent:
@@ -312,10 +309,6 @@ class CounterManager:
             current = self._value
             self._value += 1
             return current
-    
-    def get_current(self):
-        with self._lock:
-            return self._value
 
 def process_images_concurrent(images_dir, modality, settings, max_images=1000, 
                             max_workers=None, output_dir=None, image_size=512):
