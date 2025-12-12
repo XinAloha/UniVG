@@ -8,7 +8,7 @@ import time
 from Network import Network
 from Attractor import Attractor
 from Node import Node
-from AttractorPatterns import  get_random_attractors, get_grid_of_attractors, get_artery_attractors, get_nerveFiber_attractors
+from AttractorPatterns import  get_random_attractors, get_grid_of_attractors, get_artery_attractors, get_OCT_attractors
 import yaml
 import cv2
 import numpy as np
@@ -133,7 +133,7 @@ def draw(roots, count, modality, output_dir='E:\Project\SpaceClone\SynthesisLabe
     plt.gca().set_facecolor('black')  # 设置背景为黑色
 
     plt.axis('off')
-    if modality=="NerveFiber":
+    if modality=="OCT":
         for r in roots:
             draw_tree(r, parent=None, amount=0)
     else:
@@ -173,7 +173,7 @@ def getArteriaCoronariaBounds(path):
                 bound.append((i, j))
     return bound, root,  gradient_magnitude
 
-def getNerveFiberRoots(path):
+def getOCTRoots(path):
         # 读取图像  
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)  
       
@@ -243,8 +243,8 @@ def resetNetwork(network, ctx, settings, path, modality):
         elif random_num == 3:
             network.attractors = network.attractors + gridAttractors + randomAttractors
         return root
-    elif modality == "NerveFiber":
-        roots = getNerveFiberRoots(path)
+    elif modality == "OCT":
+        roots = getOCTRoots(path)
         temproots = []
         for root in roots:
              root = Node(None, root, isTip=True, ctx=ctx, settings=settings)
@@ -253,7 +253,7 @@ def resetNetwork(network, ctx, settings, path, modality):
         roots = temproots
         img = Image.open(path).convert("L")
         img = np.array(img)
-        imgAttractors = get_nerveFiber_attractors(network, ctx, img, roots)
+        imgAttractors = get_OCT_attractors(network, ctx, img, roots)
 
 
         random_num = random.randint(1, 2)
@@ -423,12 +423,12 @@ def main():
     )
     
     # 添加命令行参数
-    parser.add_argument('--input-dir', type=str, required=True,
+    parser.add_argument('--input-dir', type=str, default=r"E:\UniVG\R-SCA\RealCoronaryArteryMask",
                         help='Input directory containing real vascular masks')
-    parser.add_argument('--output-dir', type=str, required=True,
+    parser.add_argument('--output-dir', type=str, default=r"E:\UniVG\R-SCA\output",
                         help='Output directory for generated synthetic images')
     parser.add_argument('--modality', type=str, default='CoronaryArtery',
-                        choices=['CoronaryArtery', 'Brain', 'NerveFiber'],
+                        choices=['CoronaryArtery', 'Brain', 'OCT'],
                         help='Vascular modality type')
     parser.add_argument('--config', type=str, default='./paper.yaml',
                         help='Path to configuration YAML file')

@@ -31,7 +31,7 @@ def get_random_attractors(num_attractors, ctx, settings, bounds=None, obstacles=
                 if obstacle.touches(x, y):
                     is_inside_any_obstacle = True
 
-        if settings["Modality"] == "NerveFiber" or ((is_inside_any_bounds or not bounds) and \
+        if settings["Modality"] == "OCT" or ((is_inside_any_bounds or not bounds) and \
            (not is_inside_any_obstacle or not obstacles) and \
            is_on_screen):
             attractors.append(
@@ -52,7 +52,7 @@ def get_artery_attractors(network, ctx):
         ))
     return attractors
 
-def get_nerveFiber_attractors(network, ctx,img, roots):
+def get_OCT_attractors(network, ctx,img, roots):
     attractors = []
     x, y = img.shape
     for i in range(x):
@@ -105,7 +105,7 @@ def get_grid_of_attractors(num_rows, num_columns, ctx, settings, jitter_range=10
                     if obstacle.touches(x, y):
                         is_inside_any_obstacle = True
 
-            if settings["Modality"] == "NerveFiber" or (is_on_screen and \
+            if settings["Modality"] == "OCT" or (is_on_screen and \
                (is_inside_any_bounds or not bounds) and \
                (not is_inside_any_obstacle or not obstacles)):
                 attractors.append(
