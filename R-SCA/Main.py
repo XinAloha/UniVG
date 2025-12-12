@@ -22,98 +22,66 @@ from PIL import Image
 import random
 from tqdm import tqdm
 
+def _find_longest_segment_on_edge(edge_pixels):
+    """Find the longest continuous segment of non-zero pixels on an edge."""
+    if not any(edge_pixels):
+        return None
+    
+    max_length = 0
+    max_segment = None
+    start = -1
+    
+    for i, pixel in enumerate(edge_pixels):
+        if pixel != 0:
+            if start == -1:
+                start = i
+        else:
+            if start != -1:
+                length = i - start
+                if length > max_length:
+                    max_length = length
+                    max_segment = (start, i - 1)
+                start = -1
+    
+    # Check if segment extends to the end
+    if start != -1:
+        length = len(edge_pixels) - start
+        if length > max_length:
+            max_segment = (start, len(edge_pixels) - 1)
+    
+    return max_segment
+
 def find_start_point(image):
-    x, y = image.shape
-    s, e = -1, -1
-    max_len = -1
-    ans = None
-    max_ans = -1
-    for i in range(y):
-        if image[0][i] != 0 and s == -1:
-            s = i
-            e = i
-            while e < y and image[0][e] != 0:
-                e += 1
-            e -= 1
-            if max_len < (e - s + 1):
-                max_len = e - s + 1
-                ans = (s, e)
-        i = e + 1
-    f1 = False
-    if ans != None:
-        ans1 = (0, int((ans[0] + ans[1]) / 2.0))
-        max_ans = max(max_ans, ans1[1])
-        f1 = True
-
-    s, e = -1, -1
-    max_len = -1
-    ans = None
-    for i in range(x):
-        if image[i][0] != 0 and s == -1:
-            s = i
-            e = i
-            while e < x and image[e][0] != 0:
-                e += 1
-            e -= 1
-            if max_len < (e - s + 1):
-                max_len = e - s + 1
-                ans = (s, e)
-        i = e + 1
-    f2 = False
-    if  ans != None:
-        ans2 = (int((ans[0] + ans[1]) / 2.0), 0)
-        max_ans = max(max_ans, ans2[0])
-        f2 = True
-
-    s, e = -1, -1
-    max_len = -1
-    ans = None
-    for i in range(x):
-        if image[i][y - 1] != 0 and s == -1:
-            s = i
-            e = i
-            while e < x and image[e][y - 1] != 0:
-                e += 1
-            e -= 1
-            if max_len < (e - s + 1):
-                max_len = e - s + 1
-                ans = (s, e)
-        i = e + 1
-    f3 = False
-    if  ans != None:
-        ans3 = (int((ans[0] + ans[1]) / 2.0), y - 1)
-        max_ans = max(max_ans, ans3[0])
-        f3 = True
-
-    s, e = -1, -1
-    max_len = -1
-    ans = None
-    for i in range(y):
-        if image[x - 1][i] != 0 and s == -1:
-            s = i
-            e = i
-            while e < y and image[x - 1][e] != 0:
-                e += 1
-            e -= 1
-            if max_len < (e - s + 1):
-                max_len = e - s + 1
-                ans = (s, e)
-        i = e + 1
-    f4 = False
-    if ans != None:
-        ans4 = (x - 1, int((ans[0] + ans[1]) / 2.0))
-        max_ans = max(max_ans, ans4[1])
-        f4 = True
-    if f1 and max_ans == ans1[1]:
-        return ans1
-    elif f2 and max_ans == ans2[0]:
-        return ans2
-    elif f3 and max_ans == ans3[0]:
-        return ans3
-    elif f4 and max_ans == ans4[1]:
-        return ans4
-    print('position err')
-    return (0, 0)
+    """Find the optimal starting point for vascular structure growth.
+    
+    Checks all four edges of the image and returns the midpoint of the 
+    longest continuous segment of non-zero pixels.
+    """
+    height, width = image.shape
+    
+    # Check all four edges and find longest segment on each
+    edges = [
+        ('top', image[0, :], lambda seg: (0, (seg[0] + seg[1]) // 2)),
+        ('left', image[:, 0], lambda seg: ((seg[0] + seg[1]) // 2, 0)),
+        ('bottom', image[height-1, :], lambda seg: (height-1, (seg[0] + seg[1]) // 2)),
+        ('right', image[:, width-1], lambda seg: ((seg[0] + seg[1]) // 2, width-1))
+    ]
+    
+    candidates = []
+    for edge_name, edge_pixels, position_func in edges:
+        segment = _find_longest_segment_on_edge(edge_pixels)
+        if segment:
+            position = position_func(segment)
+            segment_length = segment[1] - segment[0] + 1
+            candidates.append((position, segment_length))
+    
+    if not candidates:
+        print('Warning: No valid start point found, using default (0, 0)')
+        return (0, 0)
+    
+    # Return the position with the longest segment
+    best_position, _ = max(candidates, key=lambda x: x[1])
+    return best_position
 
 def draw_tree(node, parent=None, amount=0, image_size=512):
 
@@ -168,86 +136,139 @@ def getArteriaCoronariaBounds(path):
     return bound, root,  gradient_magnitude
 
 def getOCTRoots(path):
+    """Extract root points for OCT (Optical Coherence Tomography) images.
+    
+    Finds the topmost point of each connected component in the image,
+    which serves as a starting point for vascular structure growth.
+    
+    Args:
+        path: Path to the OCT image file
+        
+    Returns:
+        List of (y, x) coordinates representing root points
+    """
+    # Load and preprocess image
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     _, binary = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
-    kernel_size = (5, 5)
-    kernel = np.ones(kernel_size, np.uint8)
-    closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
-    contours, _ = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    top_points = []
     
+    # Apply morphological closing to connect nearby regions
+    kernel = np.ones((5, 5), np.uint8)
+    closed_img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+    
+    # Find all connected components
+    contours, _ = cv2.findContours(closed_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Extract topmost point from each contour
+    root_points = []
     for contour in contours:
-        min_y = np.inf
-        min_point = None
-        for point in contour:
-            x, y = point.ravel()
-            if y < min_y:
-                min_y = y
-                min_point = (y, x)
-        top_points.append(min_point)
+        # Find point with minimum y-coordinate (topmost)
+        topmost_point = min(contour, key=lambda pt: pt[0][1])
+        y, x = topmost_point[0][1], topmost_point[0][0]
+        root_points.append((y, x))
     
-    return top_points
+    return root_points
     
-def resetNetwork(network, ctx, settings, path, modality):
-    network.reset()
-    if modality == "CoronaryArtery" or modality == "Brain":
-        network.bounds, root, _ = getArteriaCoronariaBounds(path)
-        polygon = Polygon(network.bounds)
-        point = Point(root[0], root[1])
+def _setup_artery_network(network, ctx, settings, path):
+    """Setup network for coronary artery or brain vasculature."""
+    network.bounds, root_position, _ = getArteriaCoronariaBounds(path)
+    
+    # Create root node
+    root = Node(None, root_position, isTip=True, ctx=ctx, settings=settings)
+    network.add_node(root)
+    
+    # Generate attractors
+    artery_attractors = get_artery_attractors(network, ctx)
+    random_attractors = get_random_attractors(
+        num_attractors=100, 
+        ctx=ctx, 
+        settings=settings,
+        bounds=network.bounds, 
+        obstacles=None
+    )
+    grid_attractors = get_grid_of_attractors(
+        num_rows=50, 
+        num_columns=50,
+        ctx=ctx, 
+        settings=settings, 
+        jitter_range=0, 
+        bounds=network.bounds, 
+        obstacles=None
+    )
+    
+    # Randomly combine attractors for variation
+    attractor_mode = random.randint(1, 3)
+    network.attractors = artery_attractors
+    if attractor_mode == 1:
+        network.attractors += grid_attractors
+    elif attractor_mode == 2:
+        network.attractors += random_attractors
+    elif attractor_mode == 3:
+        network.attractors += grid_attractors + random_attractors
+    
+    return root
 
-        root = Node(None, root, isTip=True, ctx=ctx, settings=settings)
+def _setup_oct_network(network, ctx, settings, path):
+    """Setup network for OCT (Optical Coherence Tomography) images."""
+    root_positions = getOCTRoots(path)
+    
+    # Create root nodes for each detected position
+    roots = []
+    for position in root_positions:
+        root = Node(None, position, isTip=True, ctx=ctx, settings=settings)
+        roots.append(root)
         network.add_node(root)
-        randomAttractors = get_random_attractors(num_attractors=100, ctx=ctx, settings=settings,bounds=network.bounds, obstacles=None)
-        gridAttractors = get_grid_of_attractors(
-                                                num_rows=50, 
-                                                num_columns=50,
-                                                ctx= ctx, 
-                                                settings=settings, 
-                                                jitter_range=0, 
-                                                bounds=network.bounds, 
-                                                obstacles=None
-                                                )
-        arteryAttractors = get_artery_attractors(network, ctx)
-        random_num = random.randint(1, 3)
-        network.attractors = arteryAttractors
-        if random_num == 1:
-            network.attractors += gridAttractors
-        elif random_num == 2:
-            network.attractors += randomAttractors
-        elif random_num == 3:
-            network.attractors = network.attractors + gridAttractors + randomAttractors
-        return root
+    
+    # Load image and generate attractors
+    img = np.array(Image.open(path).convert("L"))
+    img_attractors = get_OCT_attractors(network, ctx, img, roots)
+    
+    # Randomly add supplementary attractors
+    attractor_mode = random.randint(1, 2)
+    network.attractors = img_attractors
+    
+    if attractor_mode == 1:
+        grid_size = random.randint(10, 20)
+        grid_attractors = get_grid_of_attractors(
+            num_rows=grid_size, 
+            num_columns=grid_size,
+            ctx=ctx, 
+            settings=settings, 
+            jitter_range=0, 
+            bounds=network.bounds, 
+            obstacles=None
+        )
+        network.attractors += grid_attractors
+    elif attractor_mode == 2:
+        random_attractors = get_random_attractors(
+            num_attractors=random.randint(50, 100), 
+            ctx=ctx, 
+            settings=settings,
+            bounds=network.bounds, 
+            obstacles=None
+        )
+        network.attractors += random_attractors
+    
+    return roots
+
+def resetNetwork(network, ctx, settings, path, modality):
+    """Initialize network with root nodes and attractors based on modality.
+    
+    Args:
+        network: Network object to initialize
+        ctx: Canvas context
+        settings: Configuration settings
+        path: Path to input image
+        modality: Type of vascular structure ('CoronaryArtery', 'Brain', or 'OCT')
+        
+    Returns:
+        Root node(s) - single node for artery/brain, list of nodes for OCT
+    """
+    network.reset()
+    
+    if modality in ("CoronaryArtery", "Brain"):
+        return _setup_artery_network(network, ctx, settings, path)
     elif modality == "OCT":
-        roots = getOCTRoots(path)
-        temproots = []
-        for root in roots:
-             root = Node(None, root, isTip=True, ctx=ctx, settings=settings)
-             temproots.append(root)
-             network.add_node(root)
-        roots = temproots
-        img = Image.open(path).convert("L")
-        img = np.array(img)
-        imgAttractors = get_OCT_attractors(network, ctx, img, roots)
-
-
-        random_num = random.randint(1, 2)
-        network.attractors = imgAttractors
-        if random_num == 1:
-            num_rows = random.randint(10, 20)
-            num_columns = num_rows
-            gridAttractors = get_grid_of_attractors(
-                                                num_rows=num_rows, 
-                                                num_columns=num_columns,
-                                                ctx= ctx, 
-                                                settings=settings, 
-                                                jitter_range=0, 
-                                                bounds=network.bounds, 
-                                                obstacles=None
-                                                )
-            network.attractors += gridAttractors
-        elif random_num == 2:
-            randomAttractors = get_random_attractors(num_attractors=random.randint(50, 100), ctx=ctx, settings=settings,bounds=network.bounds, obstacles=None)
-            network.attractors += randomAttractors
+        return _setup_oct_network(network, ctx, settings, path)
         elif random_num == 3:
             randomAttractors = get_random_attractors(num_attractors=random.randint(50, 100), ctx=ctx, settings=settings,bounds=network.bounds, obstacles=None)
             num_rows = random.randint(50, 150)
