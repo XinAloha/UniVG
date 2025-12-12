@@ -269,21 +269,7 @@ def resetNetwork(network, ctx, settings, path, modality):
         return _setup_artery_network(network, ctx, settings, path)
     elif modality == "OCT":
         return _setup_oct_network(network, ctx, settings, path)
-        elif random_num == 3:
-            randomAttractors = get_random_attractors(num_attractors=random.randint(50, 100), ctx=ctx, settings=settings,bounds=network.bounds, obstacles=None)
-            num_rows = random.randint(50, 150)
-            num_columns = num_rows
-            gridAttractors = get_grid_of_attractors(
-                                                num_rows=num_rows, 
-                                                num_columns=num_columns,
-                                                ctx= ctx, 
-                                                settings=settings, 
-                                                jitter_range=0, 
-                                                bounds=network.bounds, 
-                                                obstacles=None
-                                                )
-            network.attractors = network.attractors + gridAttractors + randomAttractors
-        return roots
+    
     return None
 
 def process_single_image(args):
