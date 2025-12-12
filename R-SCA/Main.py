@@ -119,25 +119,25 @@ def find_start_point(image):
 def change_worldcoordinates(tuple, weight=512, height=512):
     return (height - height + tuple[1], -tuple[0] + weight)
 
-def draw_tree(node,parent=None, amount=0):
+def draw_tree(node, parent=None, amount=0, image_size=512):
 
     if parent:
         thickness = node.thickness
-        plt.plot([parent.position[1], node.position[1]], [512-parent.position[0], 512-node.position[0]], 'w', lw=thickness)
+        plt.plot([parent.position[1], node.position[1]], [image_size-parent.position[0], image_size-node.position[0]], 'w', lw=thickness)
     for child in node.children:
-       draw_tree(child, node,amount=amount)
+       draw_tree(child, node, amount=amount, image_size=image_size)
     
 
-def draw(roots, count, modality, output_dir='E:\Project\SpaceClone\SynthesisLabel\SBCD1'):
-    plt.figure(figsize=(512/100  , 512/100), dpi=100)
+def draw(roots, count, modality, output_dir, image_size=512):
+    plt.figure(figsize=(image_size/100, image_size/100), dpi=100)
     plt.gca().set_facecolor('black')  # 设置背景为黑色
 
     plt.axis('off')
     if modality=="OCT":
         for r in roots:
-            draw_tree(r, parent=None, amount=0)
+            draw_tree(r, parent=None, amount=0, image_size=image_size)
     else:
-        draw_tree(roots, parent=None, amount=0)
+        draw_tree(roots, parent=None, amount=0, image_size=image_size)
     
     # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
@@ -295,13 +295,13 @@ def resetNetwork(network, ctx, settings, path, modality):
 
 def process_single_image(args):
     """处理单张图像的函数，用于并发执行"""
-    image_path, modality, settings, count_value, output_dir = args
+    image_path, modality, settings, count_value, output_dir, image_size = args
     
     try:
         # 设置matplotlib为非交互模式，避免并发冲突
         plt.ioff()
         
-        canvas = np.zeros((512, 512))
+        canvas = np.zeros((image_size, image_size))
         network = Network(canvas, settings, modality=modality)
         root = resetNetwork(network, canvas, settings, image_path, modality)
         
@@ -325,7 +325,7 @@ def process_single_image(args):
                 break
         
         # 绘制并保存结果
-        output_path = draw(root, count_value, modality, output_dir)
+        output_path = draw(root, count_value, modality, output_dir, image_size)
         
         return output_path, f"Successfully processed {os.path.basename(image_path)} -> {os.path.basename(output_path)}"
         
@@ -349,7 +349,7 @@ class CounterManager:
             return self._value
 
 def process_images_concurrent(images_dir, modality, settings, max_images=1000, 
-                            max_workers=None, output_dir='E:\Project\SpaceClone\SynthesisLabel\SBCD3'):
+                            max_workers=None, output_dir=None, image_size=512):
     """并发处理图像的主函数"""
     
     if max_workers is None:
@@ -375,7 +375,7 @@ def process_images_concurrent(images_dir, modality, settings, max_images=1000,
                 break
             
             count_value = counter.get_next()
-            task_args = (image_path, modality, settings, count_value, output_dir)
+            task_args = (image_path, modality, settings, count_value, output_dir, image_size)
             tasks.append(task_args)
             total_tasks += 1
     
@@ -423,14 +423,14 @@ def main():
     )
     
     # 添加命令行参数
-    parser.add_argument('--input-dir', type=str, default=r"E:\UniVG\R-SCA\RealCoronaryArteryMask",
+    parser.add_argument('--input-dir', type=str, default=r"./R-SCA./RealCoronaryArteryMask",
                         help='Input directory containing real vascular masks')
-    parser.add_argument('--output-dir', type=str, default=r"E:\UniVG\R-SCA\output",
+    parser.add_argument('--output-dir', type=str, default=r"./R-SCA/output",
                         help='Output directory for generated synthetic images')
     parser.add_argument('--modality', type=str, default='CoronaryArtery',
                         choices=['CoronaryArtery', 'Brain', 'OCT'],
                         help='Vascular modality type')
-    parser.add_argument('--config', type=str, default='./paper.yaml',
+    parser.add_argument('--config', type=str, default='./R-SCA/paper.yaml',
                         help='Path to configuration YAML file')
     parser.add_argument('--max-images', type=int, default=2000,
                         help='Maximum number of images to generate')
@@ -440,6 +440,8 @@ def main():
                         help='Use concurrent processing mode')
     parser.add_argument('--serial', dest='concurrent', action='store_false',
                         help='Use serial processing mode (disables concurrent)')
+    parser.add_argument('--image-size', type=int, default=512,
+                        help='Size of generated images (width and height)')
     
     # 解析命令行参数
     args = parser.parse_args()
@@ -455,11 +457,13 @@ def main():
     MAX_IMAGES = args.max_images
     MAX_WORKERS = args.max_workers
     USE_CONCURRENT = args.concurrent
+    IMAGE_SIZE = args.image_size
     
     print(f"开始处理图像，模态: {modality}")
     print(f"输入目录: {images_dir}")
     print(f"输出目录: {output_dir}")
     print(f"目标生成数量: {MAX_IMAGES}")
+    print(f"图像尺寸: {IMAGE_SIZE}x{IMAGE_SIZE}")
     print(f"处理模式: {'并发' if USE_CONCURRENT else '串行'}")
     if MAX_WORKERS:
         print(f"工作进程数: {MAX_WORKERS}")
@@ -474,14 +478,15 @@ def main():
             settings=settings,
             max_images=MAX_IMAGES,
             max_workers=MAX_WORKERS,
-            output_dir=output_dir
+            output_dir=output_dir,
+            image_size=IMAGE_SIZE
         )
         print(f"并发处理结果: 成功 {successful}, 失败 {failed}")
         
     else:
         print("=== 使用原始串行模式 ===")
         count = 1
-        canvas = np.zeros((512, 512))
+        canvas = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
         images = os.listdir(images_dir)
         
         with tqdm(total=MAX_IMAGES, desc="串行处理图像") as pbar:
@@ -514,7 +519,7 @@ def main():
                             break
                     
                     # 绘制并保存
-                    draw(root, count, modality=modality, output_dir=output_dir)
+                    draw(root, count, modality=modality, output_dir=output_dir, image_size=IMAGE_SIZE)
                     count += 1
                     pbar.update(1)
     
