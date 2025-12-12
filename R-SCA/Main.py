@@ -1,4 +1,9 @@
 import os
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import threading
+import queue
+import time
 
 from Network import Network
 from Attractor import Attractor
@@ -123,20 +128,24 @@ def draw_tree(node,parent=None, amount=0):
        draw_tree(child, node,amount=amount)
     
 
-def draw(roots, count, modality):
+def draw(roots, count, modality, output_dir='E:\Project\SpaceClone\SynthesisLabel\SBCD1'):
     plt.figure(figsize=(512/100  , 512/100), dpi=100)
     plt.gca().set_facecolor('black')  # 设置背景为黑色
 
     plt.axis('off')
     if modality=="NerveFiber":
-        for r in root:
-   
+        for r in roots:
             draw_tree(r, parent=None, amount=0)
     else:
-        draw_tree(root, parent=None, amount=0)
-    plt.savefig('E:\Project\SpaceClone\synthesisLabel\BrainDSA\\' + str(count) + '.png', bbox_inches='tight', dpi=100, pad_inches=0, facecolor='black')  # 设置保存图像时的背景颜色
+        draw_tree(roots, parent=None, amount=0)
+    
+    # 确保输出目录存在
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f'{count}.png')
+    plt.savefig(output_path, bbox_inches='tight', dpi=100, pad_inches=0, facecolor='black')
     plt.clf() #清除当前图形及其所有轴，但保持窗口打开，以便可以将其重新用于其他绘图。
     plt.close() #完全关闭图形窗口
+    return output_path
 
 def getArteriaCoronariaBounds(path):
 
@@ -166,7 +175,7 @@ def getArteriaCoronariaBounds(path):
 
 def getNerveFiberRoots(path):
         # 读取图像  
-    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)  
+    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)  
       
     # 二值化图像（这里假设我们已经有了一个二值图像，或者通过阈值化获得）  
     _, binary = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)  
@@ -284,65 +293,243 @@ def resetNetwork(network, ctx, settings, path, modality):
         return roots
     return None
 
-if __name__ == "__main__":
-    count = 1
-    # load config
-    with open('paper.yaml', 'r') as file:
-        settings = yaml.safe_load(file)
-
-    canvas = np.zeros((512, 512))
-    path = r"E:\Project\SpaceClone\label\Brain"
-    images = os.listdir(path)
-    while count != 2000:
-        for image in images:
-            image_path = os.path.join(path, image)
-            modality = "Brain"
-            network = Network(canvas, settings, modality=modality)
-            root = resetNetwork(network, canvas, settings, image_path, modality)
-            # break
-        
-            BFS = True
-            Display = True
-            if BFS:
-                last = 0
-                if Display:
-                    fig, ax = plt.subplots()
-                    ax.set_xlim(0, 512)
-                    ax.set_ylim(0, 512)
-                    points, = ax.plot([], [], 'bo', markersize=2)
-                iterationAmount = 0
-                while True:
-                    network.update()
-                    iterationAmount += 1
-                    #print("iteration:", iterationAmount, last, len(network.nodes))
-                    if len(network.nodes) == last:
-                        print("迭代次数：", iterationAmount)
-                        print('space colone over')
-                        break
-                    
-                    last = len(network.nodes)
-                    if Display:
-                       
-                        x, y = [], []
-                        for node in network.nodes:
-                            x.append(node.position[1])
-                            y.append(512-node.position[0])
+def process_single_image(args):
+    """处理单张图像的函数，用于并发执行"""
+    image_path, modality, settings, count_value, output_dir = args
     
-                        points.set_data(x, y)
-                        plt.pause(0.2)
-                        plt.draw()
-                    # if iterationAmount >= 2:
-                    #     break
-                    #plt.show()
+    try:
+        # 设置matplotlib为非交互模式，避免并发冲突
+        plt.ioff()
+        
+        canvas = np.zeros((512, 512))
+        network = Network(canvas, settings, modality=modality)
+        root = resetNetwork(network, canvas, settings, image_path, modality)
+        
+        if root is None:
+            return None, f"Failed to initialize network for {image_path}"
+        
+        # 执行网络生成
+        iterationAmount = 0
+        last = 0
+        
+        while True:
+            network.update()
+            iterationAmount += 1
             
-                draw(root, count, modality=modality)
+            if len(network.nodes) == last:
+                break
+            last = len(network.nodes)
+            
+            # 防止无限循环
+            if iterationAmount > 10000:
+                break
+        
+        # 绘制并保存结果
+        output_path = draw(root, count_value, modality, output_dir)
+        
+        return output_path, f"Successfully processed {os.path.basename(image_path)} -> {os.path.basename(output_path)}"
+        
+    except Exception as e:
+        return None, f"Error processing {image_path}: {str(e)}"
 
-                count += 1
+class CounterManager:
+    """线程安全的计数器管理器"""
+    def __init__(self, start_value=1):
+        self._value = start_value
+        self._lock = threading.Lock()
+    
+    def get_next(self):
+        with self._lock:
+            current = self._value
+            self._value += 1
+            return current
+    
+    def get_current(self):
+        with self._lock:
+            return self._value
 
-                # 随着迭代次数的增加, 
-                # 每个节点寻找下一个子节点的长度（SegmentLength）应该逐渐变小，一直到最后一个最小值能保证拟合曲线
-                # 同时 吸引子范围也要缩小，保证下一节点尽可能在周围被找到， 前两者缩小，节点杀伤范围也要缩小
-                # 脑部血管：严格满足树的概念，主干粗，枝干细
-                # 初始 SegmentLength:  15          
-                #      AttractionDistance: 20       
-                #      KillDistance: 10  
+def process_images_concurrent(images_dir, modality, settings, max_images=1000, 
+                            max_workers=None, output_dir='E:\Project\SpaceClone\SynthesisLabel\SBCD3'):
+    """并发处理图像的主函数"""
+    
+    if max_workers is None:
+        max_workers = min(mp.cpu_count(), 4)  # 限制最大进程数，避免内存溢出
+    
+    print(f"使用 {max_workers} 个进程进行并发处理")
+    
+    # 获取所有图像文件
+    images = os.listdir(images_dir)
+    image_paths = [os.path.join(images_dir, img) for img in images]
+    
+    # 创建计数器管理器
+    counter = CounterManager(1)
+    
+    # 准备任务参数
+    tasks = []
+    total_tasks = 0
+    
+    # 重复处理直到达到最大图像数
+    while total_tasks < max_images:
+        for image_path in image_paths:
+            if total_tasks >= max_images:
+                break
+            
+            count_value = counter.get_next()
+            task_args = (image_path, modality, settings, count_value, output_dir)
+            tasks.append(task_args)
+            total_tasks += 1
+    
+    print(f"准备处理 {len(tasks)} 个任务")
+    
+    # 使用进度条和进程池执行任务
+    successful = 0
+    failed = 0
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        # 提交所有任务
+        future_to_task = {executor.submit(process_single_image, task): task for task in tasks}
+        
+        # 使用tqdm显示进度
+        with tqdm(total=len(tasks), desc="处理图像") as pbar:
+            for future in as_completed(future_to_task):
+                task = future_to_task[future]
+                try:
+                    result_path, message = future.result()
+                    if result_path:
+                        successful += 1
+                        pbar.set_postfix({"成功": successful, "失败": failed})
+                    else:
+                        failed += 1
+                        print(f"任务失败: {message}")
+                        pbar.set_postfix({"成功": successful, "失败": failed})
+                except Exception as e:
+                    failed += 1
+                    print(f"任务执行异常: {str(e)}")
+                    pbar.set_postfix({"成功": successful, "失败": failed})
+                
+                pbar.update(1)
+    
+    print(f"\n处理完成! 成功: {successful}, 失败: {failed}")
+    return successful, failed
+
+def main():
+    """主函数，用于支持多进程"""
+    import argparse
+    
+    # 创建命令行参数解析器
+    parser = argparse.ArgumentParser(
+        description='Spatial Colonization Algorithm (SCA) for vascular structure synthesis',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # 添加命令行参数
+    parser.add_argument('--input-dir', type=str, required=True,
+                        help='Input directory containing real vascular masks')
+    parser.add_argument('--output-dir', type=str, required=True,
+                        help='Output directory for generated synthetic images')
+    parser.add_argument('--modality', type=str, default='CoronaryArtery',
+                        choices=['CoronaryArtery', 'Brain', 'NerveFiber'],
+                        help='Vascular modality type')
+    parser.add_argument('--config', type=str, default='./paper.yaml',
+                        help='Path to configuration YAML file')
+    parser.add_argument('--max-images', type=int, default=2000,
+                        help='Maximum number of images to generate')
+    parser.add_argument('--max-workers', type=int, default=None,
+                        help='Maximum number of worker processes (None for auto)')
+    parser.add_argument('--concurrent', action='store_true', default=True,
+                        help='Use concurrent processing mode')
+    parser.add_argument('--serial', dest='concurrent', action='store_false',
+                        help='Use serial processing mode (disables concurrent)')
+    
+    # 解析命令行参数
+    args = parser.parse_args()
+    
+    # 加载配置
+    with open(args.config, 'r') as file:
+        settings = yaml.safe_load(file)
+    
+    # 设置参数
+    images_dir = args.input_dir
+    output_dir = args.output_dir
+    modality = args.modality
+    MAX_IMAGES = args.max_images
+    MAX_WORKERS = args.max_workers
+    USE_CONCURRENT = args.concurrent
+    
+    print(f"开始处理图像，模态: {modality}")
+    print(f"输入目录: {images_dir}")
+    print(f"输出目录: {output_dir}")
+    print(f"目标生成数量: {MAX_IMAGES}")
+    print(f"处理模式: {'并发' if USE_CONCURRENT else '串行'}")
+    if MAX_WORKERS:
+        print(f"工作进程数: {MAX_WORKERS}")
+    
+    start_time = time.time()
+
+    if USE_CONCURRENT:
+        print("=== 使用并发模式 ===")
+        successful, failed = process_images_concurrent(
+            images_dir=images_dir,
+            modality=modality,
+            settings=settings,
+            max_images=MAX_IMAGES,
+            max_workers=MAX_WORKERS,
+            output_dir=output_dir
+        )
+        print(f"并发处理结果: 成功 {successful}, 失败 {failed}")
+        
+    else:
+        print("=== 使用原始串行模式 ===")
+        count = 1
+        canvas = np.zeros((512, 512))
+        images = os.listdir(images_dir)
+        
+        with tqdm(total=MAX_IMAGES, desc="串行处理图像") as pbar:
+            while count <= MAX_IMAGES:
+                for image in images:
+                    if count > MAX_IMAGES:
+                        break
+                        
+                    image_path = os.path.join(images_dir, image)
+                    network = Network(canvas, settings, modality=modality)
+                    root = resetNetwork(network, canvas, settings, image_path, modality)
+                    
+                    if root is None:
+                        continue
+                    
+                    # 执行网络生成
+                    iterationAmount = 0
+                    last = 0
+                    
+                    while True:
+                        network.update()
+                        iterationAmount += 1
+                        
+                        if len(network.nodes) == last:
+                            break
+                        last = len(network.nodes)
+                        
+                        # 防止无限循环
+                        if iterationAmount > 10000:
+                            break
+                    
+                    # 绘制并保存
+                    draw(root, count, modality=modality, output_dir=output_dir)
+                    count += 1
+                    pbar.update(1)
+    
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    
+    print(f"\n总处理时间: {elapsed_time:.2f} 秒")
+    print(f"平均每张图像处理时间: {elapsed_time/MAX_IMAGES:.2f} 秒")
+    
+    if USE_CONCURRENT:
+        print(f"并发模式使用了 {MAX_WORKERS or min(mp.cpu_count(), 4)} 个进程")
+    
+    print("处理完成!")
+
+if __name__ == "__main__":
+    # 对于Windows系统的多进程支持
+    mp.freeze_support()
+    main()

@@ -6,9 +6,6 @@
   EnableCanalization: True     # turns on/off auxin flux canalization (line segment thickening)
   EnableOpacityBlending: True  # turns on/off opacity
 
-
-
-
   #Visibility toggles
   ShowAttractors: False       # toggled with 'a'
   ShowNodes: True             # toggled with 'n'
