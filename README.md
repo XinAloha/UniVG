@@ -27,6 +27,29 @@ The UniVG-58K dataset presented in this paper comprises both pre-training data a
 |-----------|--------|------------------|
 | Pre-trained Foundation Model & Code | 📦 Coming Soon | **2025.1.10** |
 | Downstream Modality Fine-tuning Code | 📦 Coming Soon | **2025.1.30** |
+
 ---
+
+# 🚀 Quick Start: Spatial Colonization Algorithm (SCA)
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/XinAloha/UniVG.git
+cd UniVG/R-SCA
+
+# Install dependencies
+pip install numpy opencv-python Pillow matplotlib scipy shapely PyYAML tqdm
+```
+
+## Usage
+
+Generate synthetic vascular images:
+
+```bash
+python Main.py --input-dir ./RealCoronaryArteryMask --output-dir ./output --modality CoronaryArtery
+```
+
  
 
