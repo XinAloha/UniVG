@@ -1,6 +1,6 @@
 import heapq
 
-# 定义优先队列控制，节点生长优先级  吸引子影响节点生长优先级以及枝干粗细程度
+# Priority queue for controlling node growth priority and branch thickness influenced by attractors
 class PriorityQueue:
     def __init__(self):
         self._queue = []

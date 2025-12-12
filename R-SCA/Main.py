@@ -23,7 +23,6 @@ import random
 from tqdm import tqdm
 
 def find_start_point(image):
-    upbound = []
     x, y = image.shape
     s, e = -1, -1
     max_len = -1
@@ -130,8 +129,7 @@ def draw_tree(node, parent=None, amount=0, image_size=512):
 
 def draw(roots, count, modality, output_dir, image_size=512):
     plt.figure(figsize=(image_size/100, image_size/100), dpi=100)
-    plt.gca().set_facecolor('black')  # 设置背景为黑色
-
+    plt.gca().set_facecolor('black')
     plt.axis('off')
     if modality=="OCT":
         for r in roots:
@@ -139,12 +137,11 @@ def draw(roots, count, modality, output_dir, image_size=512):
     else:
         draw_tree(roots, parent=None, amount=0, image_size=image_size)
     
-    # 确保输出目录存在
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f'{count}.png')
     plt.savefig(output_path, bbox_inches='tight', dpi=100, pad_inches=0, facecolor='black')
-    plt.clf() #清除当前图形及其所有轴，但保持窗口打开，以便可以将其重新用于其他绘图。
-    plt.close() #完全关闭图形窗口
+    plt.clf()
+    plt.close()
     return output_path
 
 def getArteriaCoronariaBounds(path):
@@ -174,45 +171,26 @@ def getArteriaCoronariaBounds(path):
     return bound, root,  gradient_magnitude
 
 def getOCTRoots(path):
-        # 读取图像  
-    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)  
-      
-    # 二值化图像（这里假设我们已经有了一个二值图像，或者通过阈值化获得）  
-    _, binary = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)  
+    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    _, binary = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
     kernel_size = (5, 5)
-    kernel = np.ones(kernel_size, np.uint8)  
-      
-    # 执行闭运算：先膨胀后腐蚀  
-    closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)  
-      
-    # 查找轮廓  
-    contours, _ = cv2.findContours(closing , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)  
-    # 存储每个连通区域的最靠上面的点  
-    top_points = []  
-      
-    # 遍历每个轮廓  
-    for contour in contours:  
-        # 遍历轮廓上的每个点，找到y坐标最小的点  
-        min_y = np.inf  
-        min_point = None  
-        for point in contour:  
-            x, y = point.ravel()  
-            if y < min_y:  
-                min_y = y  
-                min_point = (y, x)  
-
-        # 将点添加到列表中  
-        # print("min_point:", )
-        top_points.append(min_point)  
-       
-
-    # for point in top_points:  
-    #     cv2.circle(closing, point, 10, (255, 125, 0), -1)  
-    # cv2.imshow('Random Points', closing)  
-    # cv2.waitKey(0)  
-    # cv2.destroyAllWindows()  
-      
+    kernel = np.ones(kernel_size, np.uint8)
+    closing = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+    contours, _ = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    top_points = []
+    
+    for contour in contours:
+        min_y = np.inf
+        min_point = None
+        for point in contour:
+            x, y = point.ravel()
+            if y < min_y:
+                min_y = y
+                min_point = (y, x)
+        top_points.append(min_point)
+    
     return top_points
+    
 def resetNetwork(network, ctx, settings, path, modality):
     network.reset()
     if modality == "CoronaryArtery" or modality == "Brain":
@@ -234,7 +212,6 @@ def resetNetwork(network, ctx, settings, path, modality):
                                                 )
         arteryAttractors = get_artery_attractors(network, ctx)
         random_num = random.randint(1, 3)
-        # random_num = 2
         network.attractors = arteryAttractors
         if random_num == 1:
             network.attractors += gridAttractors
@@ -257,8 +234,6 @@ def resetNetwork(network, ctx, settings, path, modality):
 
 
         random_num = random.randint(1, 2)
-        #random_num = 1
-        #print("random_num:", random_num)
         network.attractors = imgAttractors
         if random_num == 1:
             num_rows = random.randint(10, 20)
@@ -294,13 +269,11 @@ def resetNetwork(network, ctx, settings, path, modality):
     return None
 
 def process_single_image(args):
-    """处理单张图像的函数，用于并发执行"""
+    """Process a single image for concurrent execution"""
     image_path, modality, settings, count_value, output_dir, image_size = args
     
     try:
-        # 设置matplotlib为非交互模式，避免并发冲突
         plt.ioff()
-        
         canvas = np.zeros((image_size, image_size))
         network = Network(canvas, settings, modality=modality)
         root = resetNetwork(network, canvas, settings, image_path, modality)
@@ -308,7 +281,6 @@ def process_single_image(args):
         if root is None:
             return None, f"Failed to initialize network for {image_path}"
         
-        # 执行网络生成
         iterationAmount = 0
         last = 0
         
@@ -320,20 +292,17 @@ def process_single_image(args):
                 break
             last = len(network.nodes)
             
-            # 防止无限循环
             if iterationAmount > 10000:
                 break
         
-        # 绘制并保存结果
         output_path = draw(root, count_value, modality, output_dir, image_size)
-        
         return output_path, f"Successfully processed {os.path.basename(image_path)} -> {os.path.basename(output_path)}"
         
     except Exception as e:
         return None, f"Error processing {image_path}: {str(e)}"
 
 class CounterManager:
-    """线程安全的计数器管理器"""
+    """Thread-safe counter manager"""
     def __init__(self, start_value=1):
         self._value = start_value
         self._lock = threading.Lock()
@@ -350,25 +319,19 @@ class CounterManager:
 
 def process_images_concurrent(images_dir, modality, settings, max_images=1000, 
                             max_workers=None, output_dir=None, image_size=512):
-    """并发处理图像的主函数"""
+    """Main function for concurrent image processing"""
     
     if max_workers is None:
-        max_workers = min(mp.cpu_count(), 4)  # 限制最大进程数，避免内存溢出
+        max_workers = min(mp.cpu_count(), 4)
     
-    print(f"使用 {max_workers} 个进程进行并发处理")
+    print(f"Using {max_workers} processes for concurrent processing")
     
-    # 获取所有图像文件
     images = os.listdir(images_dir)
     image_paths = [os.path.join(images_dir, img) for img in images]
-    
-    # 创建计数器管理器
     counter = CounterManager(1)
-    
-    # 准备任务参数
     tasks = []
     total_tasks = 0
     
-    # 重复处理直到达到最大图像数
     while total_tasks < max_images:
         for image_path in image_paths:
             if total_tasks >= max_images:
@@ -379,51 +342,46 @@ def process_images_concurrent(images_dir, modality, settings, max_images=1000,
             tasks.append(task_args)
             total_tasks += 1
     
-    print(f"准备处理 {len(tasks)} 个任务")
+    print(f"Preparing to process {len(tasks)} tasks")
     
-    # 使用进度条和进程池执行任务
     successful = 0
     failed = 0
     
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # 提交所有任务
         future_to_task = {executor.submit(process_single_image, task): task for task in tasks}
         
-        # 使用tqdm显示进度
-        with tqdm(total=len(tasks), desc="处理图像") as pbar:
+        with tqdm(total=len(tasks), desc="Processing images") as pbar:
             for future in as_completed(future_to_task):
                 task = future_to_task[future]
                 try:
                     result_path, message = future.result()
                     if result_path:
                         successful += 1
-                        pbar.set_postfix({"成功": successful, "失败": failed})
+                        pbar.set_postfix({"Success": successful, "Failed": failed})
                     else:
                         failed += 1
-                        print(f"任务失败: {message}")
-                        pbar.set_postfix({"成功": successful, "失败": failed})
+                        print(f"Task failed: {message}")
+                        pbar.set_postfix({"Success": successful, "Failed": failed})
                 except Exception as e:
                     failed += 1
-                    print(f"任务执行异常: {str(e)}")
-                    pbar.set_postfix({"成功": successful, "失败": failed})
+                    print(f"Task exception: {str(e)}")
+                    pbar.set_postfix({"Success": successful, "Failed": failed})
                 
                 pbar.update(1)
     
-    print(f"\n处理完成! 成功: {successful}, 失败: {failed}")
+    print(f"\nProcessing complete! Success: {successful}, Failed: {failed}")
     return successful, failed
 
 def main():
-    """主函数，用于支持多进程"""
+    """Main function with multiprocessing support"""
     import argparse
     
-    # 创建命令行参数解析器
     parser = argparse.ArgumentParser(
         description='Spatial Colonization Algorithm (SCA) for vascular structure synthesis',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     
-    # 添加命令行参数
-    parser.add_argument('--input-dir', type=str, default=r"./R-SCA./RealCoronaryArteryMask",
+    parser.add_argument('--input-dir', type=str, default=r"./R-SCA/RealCoronaryArteryMask",
                         help='Input directory containing real vascular masks')
     parser.add_argument('--output-dir', type=str, default=r"./R-SCA/output",
                         help='Output directory for generated synthetic images')
@@ -443,14 +401,11 @@ def main():
     parser.add_argument('--image-size', type=int, default=512,
                         help='Size of generated images (width and height)')
     
-    # 解析命令行参数
     args = parser.parse_args()
     
-    # 加载配置
     with open(args.config, 'r') as file:
         settings = yaml.safe_load(file)
     
-    # 设置参数
     images_dir = args.input_dir
     output_dir = args.output_dir
     modality = args.modality
@@ -459,19 +414,19 @@ def main():
     USE_CONCURRENT = args.concurrent
     IMAGE_SIZE = args.image_size
     
-    print(f"开始处理图像，模态: {modality}")
-    print(f"输入目录: {images_dir}")
-    print(f"输出目录: {output_dir}")
-    print(f"目标生成数量: {MAX_IMAGES}")
-    print(f"图像尺寸: {IMAGE_SIZE}x{IMAGE_SIZE}")
-    print(f"处理模式: {'并发' if USE_CONCURRENT else '串行'}")
+    print(f"Starting image processing, modality: {modality}")
+    print(f"Input directory: {images_dir}")
+    print(f"Output directory: {output_dir}")
+    print(f"Target generation count: {MAX_IMAGES}")
+    print(f"Image size: {IMAGE_SIZE}x{IMAGE_SIZE}")
+    print(f"Processing mode: {'Concurrent' if USE_CONCURRENT else 'Serial'}")
     if MAX_WORKERS:
-        print(f"工作进程数: {MAX_WORKERS}")
+        print(f"Worker processes: {MAX_WORKERS}")
     
     start_time = time.time()
 
     if USE_CONCURRENT:
-        print("=== 使用并发模式 ===")
+        print("=== Using concurrent mode ===")
         successful, failed = process_images_concurrent(
             images_dir=images_dir,
             modality=modality,
@@ -481,15 +436,15 @@ def main():
             output_dir=output_dir,
             image_size=IMAGE_SIZE
         )
-        print(f"并发处理结果: 成功 {successful}, 失败 {failed}")
+        print(f"Concurrent processing result: Success {successful}, Failed {failed}")
         
     else:
-        print("=== 使用原始串行模式 ===")
+        print("=== Using serial mode ===")
         count = 1
         canvas = np.zeros((IMAGE_SIZE, IMAGE_SIZE))
         images = os.listdir(images_dir)
         
-        with tqdm(total=MAX_IMAGES, desc="串行处理图像") as pbar:
+        with tqdm(total=MAX_IMAGES, desc="Processing images") as pbar:
             while count <= MAX_IMAGES:
                 for image in images:
                     if count > MAX_IMAGES:
@@ -502,7 +457,6 @@ def main():
                     if root is None:
                         continue
                     
-                    # 执行网络生成
                     iterationAmount = 0
                     last = 0
                     
@@ -514,11 +468,9 @@ def main():
                             break
                         last = len(network.nodes)
                         
-                        # 防止无限循环
                         if iterationAmount > 10000:
                             break
                     
-                    # 绘制并保存
                     draw(root, count, modality=modality, output_dir=output_dir, image_size=IMAGE_SIZE)
                     count += 1
                     pbar.update(1)
@@ -526,15 +478,14 @@ def main():
     end_time = time.time()
     elapsed_time = end_time - start_time
     
-    print(f"\n总处理时间: {elapsed_time:.2f} 秒")
-    print(f"平均每张图像处理时间: {elapsed_time/MAX_IMAGES:.2f} 秒")
+    print(f"\nTotal processing time: {elapsed_time:.2f} seconds")
+    print(f"Average time per image: {elapsed_time/MAX_IMAGES:.2f} seconds")
     
     if USE_CONCURRENT:
-        print(f"并发模式使用了 {MAX_WORKERS or min(mp.cpu_count(), 4)} 个进程")
+        print(f"Concurrent mode used {MAX_WORKERS or min(mp.cpu_count(), 4)} processes")
     
-    print("处理完成!")
+    print("Processing complete!")
 
 if __name__ == "__main__":
-    # 对于Windows系统的多进程支持
     mp.freeze_support()
     main()

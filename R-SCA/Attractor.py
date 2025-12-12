@@ -4,7 +4,7 @@ class Attractor:
     def __init__(self,position, ctx, settings=None):
         self.position = position
         self.ctx = ctx
-        self.settings = None # 未初始化
+        self.settings = None  # Not initialized
         self.influencingNodes = []
         self.fresh = True
         self.reached = False

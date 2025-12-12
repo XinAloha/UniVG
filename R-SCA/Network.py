@@ -55,7 +55,7 @@ class Network:
         #         self.add_node(next_node)
         #         node.influencedBy_size = len(node.influencedBy)
         #         node.influencedBy = []
-        #     # 对节点进行渠道化， 遍历每个末梢节点， 检查父节点厚度是否小于当前节点厚度加上一个固定值 ，如果是，则增加父节点厚度，这个处理过程一直持续到根节点
+        #     # Canalize nodes: traverse each tip node, check if parent thickness is less than current node thickness plus a fixed value, if so, increase parent thickness, continue to root
         #     if node.isTip and self.settings['EnableCanalization']:
         #         current_node = node
         #         while current_node.parent:
@@ -70,7 +70,7 @@ class Network:
                 self.add_node(next_node)
                 node.influencedBy_size = len(node.influencedBy)
                 node.influencedBy = []
-                # 对节点进行渠道化， 遍历每个末梢节点， 检查父节点厚度是否小于当前节点厚度加上一个固定值 ，如果是，则增加父节点厚度，这个处理过程一直持续到根节点
+                # Canalize nodes: traverse each tip node, check if parent thickness is less than current node thickness plus a fixed value, if so, increase parent thickness, continue to root
             if node.isTip and self.settings['EnableCanalization'] and self.modality == "BrainDsa":
                 current_node = node
                 while current_node.parent:
@@ -167,7 +167,7 @@ class Network:
                 node.influencedBy_size += len(node.influencedBy)
                 node.influencedBy = []
             print(f'add node len:{len(self.nodes)}')
-            # 对节点进行渠道化， 遍历每个末梢节点， 检查父节点厚度是否小于当前节点厚度加上一个固定值 ，如果是，则增加父节点厚度，这个处理过程一直持续到根节点
+            # Canalize nodes: traverse each tip node, check if parent thickness is less than current node thickness plus a fixed value, if so, increase parent thickness, continue to root
             for attractor in self.attractors:
                 if self.settings['VenationType'] == 'Open':
                     if attractor.reached:
@@ -234,7 +234,7 @@ class Network:
 
         return relative_neighbors
 
-    # 获取吸引子吸引范围内所有节点
+    # Get all nodes within attractor's attraction zone
     def get_nodes_in_attraction_zone(self, attractor):
         Nodes = []
         for node in self.nodes:
@@ -242,7 +242,7 @@ class Network:
                     Nodes.append(node)
         return Nodes
 
-    # 获取节点杀死范围内的节点
+    # Get nodes within kill zone
     def get_nodes_in_kill_zone(self, attractor):
         Nodes = []
         for node in self.nodes:
@@ -250,7 +250,7 @@ class Network:
                 Nodes.append(node)
         return Nodes
 
-    # 获取吸引子最近节点
+    # Get closest node to attractor
     def get_closest_node(self, attractor, nearby_nodes):
         closest_node = None
         record = self.settings['AttractionDistance']
@@ -258,7 +258,7 @@ class Network:
         for node in nearby_nodes:
             distance = math.sqrt((attractor.position[0] - node.position[0]) ** 2 + (attractor.position[1] - node.position[1]) ** 2)
 
-            # 不考虑在节点杀伤范围内的吸引子
+            # Ignore attractors within node's kill distance
             if distance < self.settings['KillDistance']:
                 attractor.reached = True
                 node.killAttractors.append(attractor)
@@ -278,7 +278,7 @@ class Network:
     def tuple_sum(self, tuple1, tuple2):
         return tuple(x + y for x, y in zip(tuple1, tuple2))
 
-    #获得平均方向
+    # Get average direction
     def get_average_direction(self, node, nearby_attractors):
         average_direction = [0, 0]
         from numpy.linalg import norm
@@ -290,14 +290,14 @@ class Network:
             #average_direction += normalized_direction
             average_direction = self.tuple_sum(average_direction, normalized_direction)
         #average_direction += random.randint(-1, 2, size=(2,))
-        # 去除随机性
+        # Remove randomness
         average_direction = self.tuple_sum(average_direction, tuple(np.random.randint(-1, 2, size=(2,))))
         #average_direction /= len(nearby_attractors)
         average_direction = self.tuple_division(average_direction, len(nearby_attractors))
 
         return average_direction
 
-    # 添加节点
+    # Add node
     def add_node(self, node):
         is_inside_any_bounds = False
         is_inside_any_obstacle = False

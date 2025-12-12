@@ -74,7 +74,7 @@ class Node:
 
     def getNextNode(self, averageAttractorDirection):
 
-        self.isTip = False # 非叶节点
+        self.isTip = False  # Non-leaf node
         #displacement = averageAttractorDirection * self.settings['SegmentLength']
         displacement = self.tuple_multiply(averageAttractorDirection, self.settings['SegmentLength'])
         #self.nextPosition = self.position + displacement

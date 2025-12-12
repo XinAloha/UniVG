@@ -93,7 +93,7 @@ def get_grid_of_attractors(num_rows, num_columns, ctx, settings, jitter_range=10
             if 0 < x < settings['Width'] and 0 < y < settings['Height']:
                 is_on_screen = True
 
-            # 只允许吸引子在bound 区域内
+            # Only allow attractors within bounds region
             if bounds and len(bounds) > 0:
                 point = Point(x, y)
                 if polygon.touches(point):
