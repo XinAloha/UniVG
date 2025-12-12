@@ -39,3 +39,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.bak
+
+# Output directories
+R-SCA/output/
+output/

@@ -14,7 +14,7 @@ We are committed to releasing the complete codebase incrementally following manu
 ## Dataset
 The UniVG-58K dataset presented in this paper comprises both pre-training data and downstream task data, which can be accessed at https://huggingface.co/datasets/xinaloha/UniVG.
 
-# R-SCA
+## R-SCA
 
 | Component | Status | Release Date |
 |-----------|--------|--------------|
