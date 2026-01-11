@@ -129,13 +129,3 @@ paired_dataset/
 ```
 
 ---
-
-## 📅Upcoming Release
-
-| Component | Status | Expected Release |
-|-----------|--------|------------------|
-| Downstream Modality Fine-tuning Code | 📦 Coming Soon | **2025.01.30** |
-
----
-
-
