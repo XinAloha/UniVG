@@ -20,7 +20,7 @@ The UniVG-58K dataset presented in this paper comprises both pre-training data a
 |-----------|--------|--------------|
 | Spatial Colonization Algorithm (SCA) for vascular structure synthesis | ✅ **Available** | **2024.12.12** |
 | Pre-trained Foundation Model & Training Code | ✅ **Available** | **2025.01.11** |
-| Downstream Modality Fine-tuning Code | 📦 Coming Soon | **2025.01.30** |
+| Downstream Modality Fine-tuning Code | ✅ **Available** | **2025.01.26** |
 
 ---
 
@@ -126,5 +126,39 @@ paired_dataset/
     ├── image_001.png
     └── ...
 ```
+
+---
+
+## 3. Downstream Modality Fine-tuning
+
+For fine-tuning the pre-trained model on specific downstream vascular modalities, we recommend using **[SD-Trainer (lora-scripts)](https://github.com/Akegarasu/lora-scripts)** - a LoRA & Dreambooth training GUI based on kohya-ss's trainer.
+
+### Quick Start
+
+```bash
+# Clone and install
+git clone --recurse-submodules https://github.com/Akegarasu/lora-scripts
+cd lora-scripts
+
+# Windows
+./install.ps1      # or install-cn.ps1 for China mainland
+./run_gui.ps1
+
+# Linux
+bash install.bash
+bash run_gui.sh
+```
+
+The GUI will open at http://127.0.0.1:28000
+
+### Recommended Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Base Model | UniVG checkpoint | Pre-trained model path |
+| Network Type | LoRA | Low-Rank Adaptation |
+| Network Rank | 32 | Higher = more capacity |
+| Learning Rate | 1e-4 ~ 5e-5 | Lower for few-shot |
+| Resolution | 512 | Match pre-training |
 
 ---
