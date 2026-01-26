@@ -1,0 +1,21 @@
+# UniVG Segmentation Dependencies
+
+# Core
+torch>=1.10.0
+torchvision>=0.11.0
+numpy>=1.20.0
+
+# Data processing
+Pillow>=8.0.0
+albumentations>=1.0.0
+opencv-python>=4.5.0
+
+# Metrics
+scikit-image>=0.18.0
+scipy>=1.7.0
+
+# Training utilities
+tqdm>=4.60.0
+
+# Optional: for Hausdorff distance
+# hausdorff>=0.2.5

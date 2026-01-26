@@ -21,6 +21,7 @@ The UniVG-58K dataset presented in this paper comprises both pre-training data a
 | Spatial Colonization Algorithm (SCA) for vascular structure synthesis | ✅ **Available** | **2024.12.12** |
 | Pre-trained Foundation Model & Training Code | ✅ **Available** | **2025.01.11** |
 | Downstream Modality Fine-tuning Code | ✅ **Available** | **2025.01.26** |
+| Downstream Segmentation Training Code | ✅ **Available** | **2025.01.26** |
 
 ---
 
@@ -160,5 +161,87 @@ The GUI will open at http://127.0.0.1:28000
 | Network Rank | 32 | Higher = more capacity |
 | Learning Rate | 1e-4 ~ 5e-5 | Lower for few-shot |
 | Resolution | 512 | Match pre-training |
+
+---
+
+## 4. Downstream Segmentation Training
+
+Train UNet segmentation model with joint real and generated data.
+
+### Installation
+
+```bash
+cd UniVG/Segmentation
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Dataset Structure
+
+Prepare your data in the following structure:
+
+**Real data:**
+```
+real_data/
+├── train_origin/    # Training images
+├── train_mask/      # Training masks
+├── test_origin/     # Test images
+└── test_mask/       # Test masks
+```
+
+**Generated data:**
+```
+generated_data/
+├── images/          # Generated images
+└── masks/           # Corresponding masks
+```
+
+### Training
+
+Train with joint real and generated data:
+
+```bash
+python train.py \
+    --real_data_path /path/to/real/data \
+    --fake_data_path /path/to/generated/data \
+    --output_dir ./checkpoints \
+    --batch_size 2 \
+    --learning_rate 3e-4 \
+    --steps 75000 \
+    --save_steps 6250
+```
+
+**Training Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--real_data_path` | required | Path to real training data |
+| `--fake_data_path` | required | Path to generated training data |
+| `--output_dir` | `./checkpoints` | Directory to save checkpoints |
+| `--batch_size` | 2 | Batch size per data source |
+| `--learning_rate` | 3e-4 | Learning rate |
+| `--steps` | 75000 | Total training steps |
+| `--save_steps` | 6250 | Save checkpoint interval |
+| `--batch_norm` | False | Use batch normalization |
+| `--resume` | None | Resume from checkpoint |
+
+### Evaluation
+
+Evaluate trained model on test data:
+
+```bash
+python evaluate.py \
+    --checkpoint ./checkpoints/unet_final.pth \
+    --test_data_path /path/to/test/data \
+    --save_predictions \
+    --output_dir ./results
+```
+
+**Evaluation Metrics:**
+- **Dice**: Dice coefficient
+- **IoU**: Intersection over Union
+- **clDice**: Centerline Dice (for tubular structures)
+- **NSD**: Normalized Surface Dice
 
 ---
